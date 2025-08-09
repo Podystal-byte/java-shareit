@@ -13,6 +13,6 @@ import java.time.LocalDateTime;
 public class ItemRequest {
     private int id;
     private String description;
-    private User requestor;
+    private Integer requestorId;
     private LocalDateTime created;
 }
