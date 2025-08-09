@@ -11,11 +11,11 @@ import java.util.Map;
 @Repository
 public class InMemoryItemRepository implements ItemRepository {
     private final Map<Integer, Item> items = new HashMap<>();
-    private int nextId = 0;
+    private int nextId = 1;
 
     @Override
     public Item create(Item item) {
-        if (item.getId() == 0) {
+        if (item.getId() == null || item.getId() == 0) {
             item.setId(nextId++);
         }
         items.put(item.getId(), item);

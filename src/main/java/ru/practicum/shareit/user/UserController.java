@@ -1,13 +1,14 @@
 package ru.practicum.shareit.user;
 
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.shareit.exception.ConflictException;
 import ru.practicum.shareit.exception.ValidationException;
 import ru.practicum.shareit.user.dto.UserDto;
-import ru.practicum.shareit.user.dto.UserDtoMapper;
+import ru.practicum.shareit.user.dto.UserMapper;
 import ru.practicum.shareit.user.model.User;
 import ru.practicum.shareit.user.service.UserService;
 
@@ -16,46 +17,43 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping(path = "/users")
+@RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
-
-    @Autowired
-    public UserController(UserService userService) {
-        this.userService = userService;
-    }
+    private final UserMapper userMapper;
 
     @GetMapping("/{id}")
-    public UserDto getUser(@PathVariable int id) {
-        return UserDtoMapper.map(userService.getUserById(id));
+    public ResponseEntity<UserDto> getUser(@PathVariable Integer id) {
+        User user = userService.getUserById(id);
+        return ResponseEntity.ok(userMapper.toDto(user));
     }
 
     @PostMapping
-    public UserDto createUser(@Valid @RequestBody UserDto userDto) throws ConflictException, ValidationException {
-        User user = UserDtoMapper.mapToUser(userDto);
+    public ResponseEntity<UserDto> createUser(@Valid @RequestBody UserDto userDto) throws ValidationException, ConflictException {
+        User user = userMapper.toUser(userDto);
         User createdUser = userService.addUser(user);
-        return UserDtoMapper.map(createdUser);
+        return ResponseEntity.status(HttpStatus.CREATED).body(userMapper.toDto(createdUser));
     }
 
     @GetMapping
-    public List<UserDto> getAllUsers() {
-        return userService.getAllUsers().stream()
-                .map(UserDtoMapper::map)
+    public ResponseEntity<List<UserDto>> getAllUsers() {
+        List<UserDto> users = userService.getAllUsers().stream()
+                .map(userMapper::toDto)
                 .collect(Collectors.toList());
+        return ResponseEntity.ok(users);
     }
 
     @PatchMapping("/{id}")
-    public UserDto updateUser(@PathVariable int id, @Valid @RequestBody UserDto userDto) throws ConflictException {
-        User updatedUser = UserDtoMapper.mapToUser(userDto);
-        updatedUser.setId(id);
-        User result = userService.updateUser(updatedUser);
-        return UserDtoMapper.map(result);
+    public ResponseEntity<UserDto> updateUser(@PathVariable Integer id, @RequestBody UserDto userDto) throws ConflictException {
+        User userToUpdate = userMapper.toUser(userDto);
+        userToUpdate.setId(id);
+        User updatedUser = userService.updateUser(userToUpdate);
+        return ResponseEntity.ok(userMapper.toDto(updatedUser));
     }
 
     @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteUser(@PathVariable int id) {
+    public ResponseEntity<Void> deleteUser(@PathVariable Integer id) {
         userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
     }
 }
-
-//

@@ -10,17 +10,13 @@ import java.util.Map;
 
 @Repository
 public class InMemoryUserRepostory implements UserRepository {
-    Map<Integer, User> users;
-    private int nextid = 1;
-
-    public InMemoryUserRepostory() {
-        users = new HashMap<>();
-    }
+    private final Map<Integer, User> users = new HashMap<>();
+    private int nextId = 1;
 
     @Override
     public User create(User user) {
-        if (user.getId() == 0) {
-            user.setId(nextid++);
+        if (user.getId() == null || user.getId() == 0) {
+            user.setId(nextId++);
         }
         users.put(user.getId(), user);
         return user;
@@ -28,7 +24,8 @@ public class InMemoryUserRepostory implements UserRepository {
 
     @Override
     public User update(User updateUser) {
-        return users.put(updateUser.getId(), updateUser);
+        users.put(updateUser.getId(), updateUser);
+        return updateUser;
     }
 
     @Override
@@ -44,6 +41,4 @@ public class InMemoryUserRepostory implements UserRepository {
     public List<User> findAll() {
         return new ArrayList<>(users.values());
     }
-
-
 }
