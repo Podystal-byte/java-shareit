@@ -9,6 +9,7 @@ import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.item.dto.*;
 import ru.practicum.shareit.item.model.Comment;
 import ru.practicum.shareit.item.model.Item;
+import ru.practicum.shareit.item.repository.ItemRepository;
 import ru.practicum.shareit.item.service.ItemService;
 import ru.practicum.shareit.user.model.User;
 import ru.practicum.shareit.user.repo.UserRepository;
@@ -20,7 +21,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/items")
 @RequiredArgsConstructor
 public class ItemController {
-
+    private final ItemRepository itemRepository;
     private final ItemService itemService;
     private final ItemMapper itemMapper;
     private final UserRepository userRepository;
@@ -28,55 +29,47 @@ public class ItemController {
     private static final String USER_ID_HEADER = "X-Sharer-User-Id";
 
     @PostMapping
-    public ResponseEntity<ItemDto> addItem(@RequestHeader("X-Sharer-User-Id") Long userId,
-                                           @Valid @RequestBody ItemDto itemDto) {
+    public ResponseEntity<ItemDto> addItem(@RequestHeader("X-Sharer-User-Id") Long userId, @Valid @RequestBody ItemDto itemDto) {
         Item item = itemMapper.toItem(itemDto);
         Item createdItem = itemService.addItem(userId, item);
         return ResponseEntity.status(HttpStatus.CREATED).body(itemMapper.toDto(createdItem));
     }
 
     @PatchMapping("/{itemId}")
-    public ResponseEntity<ItemDto> updateItem(@RequestHeader("X-Sharer-User-Id") Long userId, // Изменено на Long
-                                              @PathVariable Long itemId, // Изменено на Long
-                                              @RequestBody ItemDto itemDto) {
+    public ResponseEntity<ItemDto> updateItem(@RequestHeader("X-Sharer-User-Id") Long userId, @PathVariable Long itemId, @RequestBody ItemDto itemDto) {
         Item itemToUpdate = itemMapper.toItem(itemDto);
-        itemToUpdate.setId(itemId); // Устанавливаем ID из PathVariable
+        itemToUpdate.setId(itemId);
         Item updatedItem = itemService.updateItem(userId, itemId, itemToUpdate);
         return ResponseEntity.ok(itemMapper.toDto(updatedItem));
     }
 
     @GetMapping("/{itemId}")
-    public ResponseEntity<ItemDto> getItem(@PathVariable Long itemId) {
-        Item item = itemService.getItemById(itemId);
-        return ResponseEntity.ok(itemMapper.toDto(item));
+    public ItemWithBookingsAndCommentsDto getItemById(@PathVariable Long itemId, @RequestHeader("X-Sharer-User-Id") Long userId) {
+        return itemService.getItemById(itemId, userId);
     }
 
     @GetMapping
-    public ResponseEntity<List<ItemDto>> getOwnersItems(@RequestHeader("X-Sharer-User-Id") Long userId) { // Изменено на Long
-        List<ItemDto> items = itemService.getItemsByOwner(userId).stream()
-                .map(itemMapper::toDto)
-                .collect(Collectors.toList());
+    public ResponseEntity<List<ItemDto>> getOwnersItems(@RequestHeader("X-Sharer-User-Id") Long userId) {
+        List<ItemDto> items = itemService.getItemsByOwner(userId).stream().map(itemMapper::toDto).collect(Collectors.toList());
         return ResponseEntity.ok(items);
     }
 
     @GetMapping("/search")
     public ResponseEntity<List<ItemDto>> searchItems(@RequestParam String text) {
-        List<ItemDto> foundItems = itemService.searchItems(text).stream()
-                .map(itemMapper::toDto)
-                .collect(Collectors.toList());
+        List<ItemDto> foundItems = itemService.searchItems(text).stream().map(itemMapper::toDto).collect(Collectors.toList());
         return ResponseEntity.ok(foundItems);
     }
 
     @PostMapping("/{itemId}/comment")
     @ResponseStatus(HttpStatus.OK)
-    public CommentDto addComment(@RequestHeader(USER_ID_HEADER) Long userId,
-                                 @PathVariable Long itemId,
-                                 @Valid @RequestBody CommentRequestDto commentRequestDto) {
+    public CommentDto addComment(@RequestHeader(USER_ID_HEADER) Long userId, @PathVariable Long itemId, @Valid @RequestBody CommentRequestDto commentRequestDto) {
 
-        User author = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Пользователь не найден."));
+        User author = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("Пользователь не найден."));
 
-        Item item = itemService.getItemById(itemId);
+        ItemWithBookingsAndCommentsDto itemWithBookingsAndCommentsDto = itemService.getItemById(itemId, userId);
+
+
+        Item item = itemRepository.findById(itemId).orElseThrow(() -> new NotFoundException("item not found"));
 
         Comment comment = commentMapper.toComment(commentRequestDto, author, item);
 
