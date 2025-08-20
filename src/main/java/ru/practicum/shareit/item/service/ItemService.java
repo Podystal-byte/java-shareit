@@ -38,8 +38,7 @@ public class ItemService {
     }
 
     public Item updateItem(Long userId, Long itemId, Item updatedItem) {
-        Item existingItem = itemRepository.findById(updatedItem.getId())
-                .orElseThrow(()-> new NotFoundException("item not found"));
+        Item existingItem = itemRepository.findById(updatedItem.getId()).orElseThrow(() -> new NotFoundException("item not found"));
 
         if (existingItem.getOwner().getId() != userId) {
             log.warn("Пользователь {} попытался отредактировать вещь {}, которой не владеет.", userId, itemId);
@@ -61,14 +60,11 @@ public class ItemService {
     }
 
     public Item getItemById(Long itemId) {
-        return itemRepository.findById(itemId)
-                .orElseThrow(()-> new NotFoundException("item not found"));
+        return itemRepository.findById(itemId).orElseThrow(() -> new NotFoundException("item not found"));
     }
 
     public List<Item> getItemsByOwner(Long userId) {
-        return itemRepository.findAll().stream()
-                .filter(item -> item.getOwner() != null && item.getOwner().getId() == userId)
-                .toList();
+        return itemRepository.findAll().stream().filter(item -> item.getOwner() != null && item.getOwner().getId() == userId).toList();
     }
 
     public List<Item> searchItems(String text) {
@@ -76,21 +72,14 @@ public class ItemService {
             return new ArrayList<>();
         }
         String searchText = text.toLowerCase();
-        return itemRepository.findAll().stream()
-                .filter(item -> Boolean.TRUE.equals(item.getAvailable()) &&
-                        (item.getName().toLowerCase().contains(searchText) ||
-                                item.getDescription().toLowerCase().contains(searchText)))
-                .toList();
+        return itemRepository.findAll().stream().filter(item -> Boolean.TRUE.equals(item.getAvailable()) && (item.getName().toLowerCase().contains(searchText) || item.getDescription().toLowerCase().contains(searchText))).toList();
     }
 
     public Comment addComment(Long userId, Long itemId, Comment comment) {
-        User author = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Пользователь не найден."));
-        Item item = itemRepository.findById(itemId)
-                .orElseThrow(() -> new NotFoundException("Вещь не найдена."));
+        User author = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("Пользователь не найден."));
+        Item item = itemRepository.findById(itemId).orElseThrow(() -> new NotFoundException("Вещь не найдена."));
 
-        List<Booking> userBookings = bookingRepository
-                .findByBookerIdAndItem_IdAndEndIsBefore(userId, itemId, LocalDateTime.now());
+        List<Booking> userBookings = bookingRepository.findByBookerIdAndItem_IdAndEndIsBefore(userId, itemId, LocalDateTime.now());
 
         if (userBookings.isEmpty()) {
             throw new ValidationException("Пользователь не может оставлять комментарии, так как не брал вещь в аренду.");
