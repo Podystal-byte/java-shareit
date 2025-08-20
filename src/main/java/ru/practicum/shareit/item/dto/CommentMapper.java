@@ -2,10 +2,9 @@ package ru.practicum.shareit.item.dto;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-
 import ru.practicum.shareit.item.model.Comment;
-import ru.practicum.shareit.user.model.User;
 import ru.practicum.shareit.item.model.Item;
+import ru.practicum.shareit.user.model.User;
 
 @Mapper(componentModel = "spring")
 public interface CommentMapper {
