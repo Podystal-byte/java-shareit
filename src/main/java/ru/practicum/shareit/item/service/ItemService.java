@@ -17,6 +17,7 @@ import ru.practicum.shareit.user.repo.UserRepository;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -40,7 +41,7 @@ public class ItemService {
     public Item updateItem(Long userId, Long itemId, Item updatedItem) {
         Item existingItem = itemRepository.findById(updatedItem.getId()).orElseThrow(() -> new NotFoundException("item not found"));
 
-        if (existingItem.getOwner().getId() != userId) {
+        if (!Objects.equals(existingItem.getOwner().getId(), userId)) {
             log.warn("Пользователь {} попытался отредактировать вещь {}, которой не владеет.", userId, itemId);
             throw new NotFoundException("Только владелец может редактировать вещь.");
         }
@@ -64,7 +65,7 @@ public class ItemService {
     }
 
     public List<Item> getItemsByOwner(Long userId) {
-        return itemRepository.findAll().stream().filter(item -> item.getOwner() != null && item.getOwner().getId() == userId).toList();
+        return itemRepository.findAll().stream().filter(item -> item.getOwner() != null && Objects.equals(item.getOwner().getId(), userId)).toList();
     }
 
     public List<Item> searchItems(String text) {
