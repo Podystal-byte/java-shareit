@@ -5,10 +5,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.shareit.item.dto.ItemDto;
-import ru.practicum.shareit.item.dto.ItemMapper;
+import ru.practicum.shareit.exception.NotFoundException;
+import ru.practicum.shareit.item.dto.*;
+import ru.practicum.shareit.item.model.Comment;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.item.service.ItemService;
+import ru.practicum.shareit.user.model.User;
+import ru.practicum.shareit.user.repo.UserRepository;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -20,9 +23,12 @@ public class ItemController {
 
     private final ItemService itemService;
     private final ItemMapper itemMapper;
+    private final UserRepository userRepository;
+    private final CommentMapper commentMapper;
+    private static final String USER_ID_HEADER = "X-Sharer-User-Id";
 
     @PostMapping
-    public ResponseEntity<ItemDto> addItem(@RequestHeader("X-Sharer-User-Id") int userId,
+    public ResponseEntity<ItemDto> addItem(@RequestHeader("X-Sharer-User-Id") Long userId,
                                            @Valid @RequestBody ItemDto itemDto) {
         Item item = itemMapper.toItem(itemDto);
         Item createdItem = itemService.addItem(userId, item);
@@ -30,22 +36,23 @@ public class ItemController {
     }
 
     @PatchMapping("/{itemId}")
-    public ResponseEntity<ItemDto> updateItem(@RequestHeader("X-Sharer-User-Id") int userId,
-                                              @PathVariable int itemId,
+    public ResponseEntity<ItemDto> updateItem(@RequestHeader("X-Sharer-User-Id") Long userId, // Изменено на Long
+                                              @PathVariable Long itemId, // Изменено на Long
                                               @RequestBody ItemDto itemDto) {
         Item itemToUpdate = itemMapper.toItem(itemDto);
+        itemToUpdate.setId(itemId); // Устанавливаем ID из PathVariable
         Item updatedItem = itemService.updateItem(userId, itemId, itemToUpdate);
         return ResponseEntity.ok(itemMapper.toDto(updatedItem));
     }
 
     @GetMapping("/{itemId}")
-    public ResponseEntity<ItemDto> getItem(@PathVariable int itemId) {
+    public ResponseEntity<ItemDto> getItem(@PathVariable Long itemId) {
         Item item = itemService.getItemById(itemId);
         return ResponseEntity.ok(itemMapper.toDto(item));
     }
 
     @GetMapping
-    public ResponseEntity<List<ItemDto>> getOwnersItems(@RequestHeader("X-Sharer-User-Id") int userId) {
+    public ResponseEntity<List<ItemDto>> getOwnersItems(@RequestHeader("X-Sharer-User-Id") Long userId) { // Изменено на Long
         List<ItemDto> items = itemService.getItemsByOwner(userId).stream()
                 .map(itemMapper::toDto)
                 .collect(Collectors.toList());
@@ -58,5 +65,21 @@ public class ItemController {
                 .map(itemMapper::toDto)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(foundItems);
+    }
+
+    @PostMapping("/{itemId}/comment")
+    @ResponseStatus(HttpStatus.OK)
+    public CommentDto addComment(@RequestHeader(USER_ID_HEADER) Long userId,
+                                 @PathVariable Long itemId,
+                                 @Valid @RequestBody CommentRequestDto commentRequestDto) {
+
+        User author = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("Пользователь не найден."));
+
+        Item item = itemService.getItemById(itemId);
+
+        Comment comment = commentMapper.toComment(commentRequestDto, author, item);
+
+        return commentMapper.toCommentDto(itemService.addComment(userId, itemId, comment));
     }
 }
