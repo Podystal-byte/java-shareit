@@ -10,7 +10,6 @@ import ru.practicum.shareit.user.model.User;
 import ru.practicum.shareit.user.repo.UserRepository;
 
 import java.util.List;
-import java.util.Objects;
 
 @Slf4j
 @Service
@@ -22,28 +21,24 @@ public class UserService {
         this.userRepository = userRepository;
     }
 
-    public User addUser(User user) throws ConflictException, ValidationException {
+    public User addUser(User user) throws ValidationException, ConflictException {
         if (user.getEmail() == null || user.getEmail().isBlank()) {
             throw new ValidationException("Email не может быть пустым.");
         }
 
-        if (userRepository.findAll().stream()
-                .anyMatch(u -> Objects.equals(u.getEmail(), user.getEmail()))) {
+        if (userRepository.existsByEmail(user.getEmail())) {
             throw new ConflictException("Пользователь с таким email уже существует.");
         }
 
-        return userRepository.create(user);
+        return userRepository.save(user);
     }
 
-
     public User updateUser(User updatedUser) throws ConflictException {
-        User existingUser = userRepository.findById(updatedUser.getId());
-        if (existingUser == null) {
-            throw new NotFoundException("User not found.");
-        }
+        User existingUser = userRepository.findById(updatedUser.getId())
+                .orElseThrow(() -> new NotFoundException("User not found."));
 
         if (updatedUser.getEmail() != null && !updatedUser.getEmail().isBlank() && !updatedUser.getEmail().equals(existingUser.getEmail())) {
-            if (userRepository.findAll().stream().anyMatch(u -> u.getEmail() != null && u.getEmail().equals(updatedUser.getEmail()))) {
+            if (userRepository.existsByEmail(updatedUser.getEmail())) {
                 throw new ConflictException("User with this email already exists.");
             }
             existingUser.setEmail(updatedUser.getEmail());
@@ -54,25 +49,21 @@ public class UserService {
         }
 
         log.info("Updating user with id: {}", updatedUser.getId());
-        return userRepository.update(existingUser);
+        return userRepository.save(existingUser);
     }
 
-    public void deleteUser(int id) {
-        User user = userRepository.findById(id);
-        if (user == null) {
+    public void deleteUser(Long id) {
+        if (!userRepository.existsById(id)) {
             throw new NotFoundException("User not found.");
         }
         log.info("Deleting user with id: {}", id);
-        userRepository.delete(user);
+        userRepository.deleteById(id);
     }
 
-    public User getUserById(int id) {
-        User user = userRepository.findById(id);
-        if (user == null) {
-            throw new NotFoundException("User not found.");
-        }
+    public User getUserById(Long id) {
         log.info("Fetching user with id: {}", id);
-        return user;
+        return userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("User not found."));
     }
 
     public List<User> getAllUsers() {

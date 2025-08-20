@@ -23,7 +23,7 @@ public class UserController {
     private final UserMapper userMapper;
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserDto> getUser(@PathVariable Integer id) {
+    public ResponseEntity<UserDto> getUser(@PathVariable Long id) {
         User user = userService.getUserById(id);
         return ResponseEntity.ok(userMapper.toDto(user));
     }
@@ -44,7 +44,7 @@ public class UserController {
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<UserDto> updateUser(@PathVariable Integer id, @RequestBody UserDto userDto) throws ConflictException {
+    public ResponseEntity<UserDto> updateUser(@PathVariable Long id, @RequestBody UserDto userDto) throws ConflictException {
         User userToUpdate = userMapper.toUser(userDto);
         userToUpdate.setId(id);
         User updatedUser = userService.updateUser(userToUpdate);
@@ -52,7 +52,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Integer id) {
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
     }
