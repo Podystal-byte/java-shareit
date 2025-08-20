@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import ru.practicum.shareit.booking.BookingState;
 import ru.practicum.shareit.booking.Status;
 import ru.practicum.shareit.booking.dto.BookingRequestDto;
 import ru.practicum.shareit.booking.model.Booking;
@@ -95,22 +96,28 @@ public class BookingService {
 
         Sort sort = Sort.by(Sort.Direction.DESC, "start");
         LocalDateTime now = LocalDateTime.now();
+        BookingState bookingState;
+        try {
+            bookingState = BookingState.valueOf(state.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("Unknown state: " + state);
+        }
 
-        switch (state.toUpperCase()) {
-            case "ALL":
+        switch (bookingState) {
+            case ALL:
                 return bookingRepository.findByBookerId(userId, sort);
-            case "CURRENT":
+            case CURRENT:
                 return bookingRepository.findByBookerIdAndStartIsBeforeAndEndIsAfter(userId, now, now, sort);
-            case "PAST":
+            case PAST:
                 return bookingRepository.findByBookerIdAndEndIsBefore(userId, now, sort);
-            case "FUTURE":
+            case FUTURE:
                 return bookingRepository.findByBookerIdAndStartIsAfter(userId, now, sort);
-            case "WAITING":
+            case WAITING:
                 return bookingRepository.findByBookerIdAndStatus(userId, Status.WAITING, sort);
-            case "REJECTED":
+            case REJECTED:
                 return bookingRepository.findByBookerIdAndStatus(userId, Status.REJECTED, sort);
             default:
-                throw new ValidationException("Unknown state: " + state);
+                throw new IllegalStateException("Unexpected state: " + bookingState);
         }
     }
 
@@ -120,22 +127,28 @@ public class BookingService {
 
         Sort sort = Sort.by(Sort.Direction.DESC, "start");
         LocalDateTime now = LocalDateTime.now();
+        BookingState bookingState;
+        try {
+            bookingState = BookingState.valueOf(state.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("Unknown state: " + state);
+        }
 
-        switch (state.toUpperCase()) {
-            case "ALL":
+        switch (bookingState) {
+            case ALL:
                 return bookingRepository.findByItemOwnerId(userId, sort);
-            case "CURRENT":
+            case CURRENT:
                 return bookingRepository.findByItemOwnerIdAndStartIsBeforeAndEndIsAfter(userId, now, now, sort);
-            case "PAST":
+            case PAST:
                 return bookingRepository.findByItemOwnerIdAndEndIsBefore(userId, now, sort);
-            case "FUTURE":
+            case FUTURE:
                 return bookingRepository.findByItemOwnerIdAndStartIsAfter(userId, now, sort);
-            case "WAITING":
+            case WAITING:
                 return bookingRepository.findByItemOwnerIdAndStatus(userId, Status.WAITING, sort);
-            case "REJECTED":
+            case REJECTED:
                 return bookingRepository.findByItemOwnerIdAndStatus(userId, Status.REJECTED, sort);
             default:
-                throw new ValidationException("Unknown state: " + state);
+                throw new IllegalStateException("Unexpected state: " + bookingState);
         }
     }
 }

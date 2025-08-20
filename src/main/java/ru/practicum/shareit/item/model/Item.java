@@ -21,6 +21,6 @@ public class Item {
     private User owner;
     private Integer requestId;
 
-    @Transient
+    @OneToMany(mappedBy = "item", fetch = FetchType.LAZY)
     private List<Comment> comments;
 }

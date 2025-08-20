@@ -5,14 +5,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.shareit.exception.NotFoundException;
+import ru.practicum.shareit.exception.ValidationException;
 import ru.practicum.shareit.item.dto.*;
-import ru.practicum.shareit.item.model.Comment;
 import ru.practicum.shareit.item.model.Item;
-import ru.practicum.shareit.item.repository.ItemRepository;
+import ru.practicum.shareit.item.service.CommentService;
 import ru.practicum.shareit.item.service.ItemService;
-import ru.practicum.shareit.user.model.User;
-import ru.practicum.shareit.user.repo.UserRepository;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,11 +18,11 @@ import java.util.stream.Collectors;
 @RequestMapping("/items")
 @RequiredArgsConstructor
 public class ItemController {
-    private final ItemRepository itemRepository;
     private final ItemService itemService;
     private final ItemMapper itemMapper;
-    private final UserRepository userRepository;
     private final CommentMapper commentMapper;
+    private final CommentService commentService;
+
     private static final String USER_ID_HEADER = "X-Sharer-User-Id";
 
     @PostMapping
@@ -62,17 +59,10 @@ public class ItemController {
 
     @PostMapping("/{itemId}/comment")
     @ResponseStatus(HttpStatus.OK)
-    public CommentDto addComment(@RequestHeader(USER_ID_HEADER) Long userId, @PathVariable Long itemId, @Valid @RequestBody CommentRequestDto commentRequestDto) {
+    public CommentDto addComment(@RequestHeader("X-Sharer-User-Id") Long userId,
+                                 @PathVariable Long itemId,
+                                 @Valid @RequestBody CommentRequestDto commentRequestDto) throws ValidationException {
 
-        User author = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("Пользователь не найден."));
-
-        ItemWithBookingsAndCommentsDto itemWithBookingsAndCommentsDto = itemService.getItemById(itemId, userId);
-
-
-        Item item = itemRepository.findById(itemId).orElseThrow(() -> new NotFoundException("item not found"));
-
-        Comment comment = commentMapper.toComment(commentRequestDto, author, item);
-
-        return commentMapper.toCommentDto(itemService.addComment(userId, itemId, comment));
+        return commentMapper.toCommentDto(commentService.addComment(userId, itemId, commentRequestDto));
     }
 }
