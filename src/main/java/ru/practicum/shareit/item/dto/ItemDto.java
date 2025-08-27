@@ -6,7 +6,7 @@ import lombok.Data;
 
 @Data
 public class ItemDto {
-    private Integer id;
+    private Long id;
 
     @NotNull
     @NotBlank
