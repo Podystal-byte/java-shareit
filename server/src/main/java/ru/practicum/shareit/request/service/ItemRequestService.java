@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true) // <--- РЕКОМЕНДУЕТСЯ ДЛЯ СЕРВИСОВ, ГДЕ В ОСНОВНОМ ЧТЕНИЕ
+@Transactional(readOnly = true)
 public class ItemRequestService {
     private final ItemRequestRepository requestRepository;
     private final UserRepository userRepository;
@@ -31,24 +31,23 @@ public class ItemRequestService {
     private final ItemRepository itemRepository;
     private final ItemMapper itemMapper;
 
-    @Transactional // <--- Явно указываем, что метод изменяет данные
+    @Transactional
     public ItemRequestDto createRequest(Long userId, ItemRequestDto itemRequestDto) {
-        // Ваша логика создания запроса почти верна, но можно сделать чуть проще
+
         var requester = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
         ItemRequest itemRequest = requestMapper.toItem(itemRequestDto);
         itemRequest.setRequester(requester);
         itemRequest.setCreated(LocalDateTime.now());
-        itemRequest.setItems(Collections.emptyList()); // Инициализируем пустым списком
+        itemRequest.setItems(Collections.emptyList());
         return requestMapper.toDto(requestRepository.save(itemRequest));
     }
 
     public List<ItemRequestDto> getRequestsByUserId(Long userId) {
         userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
-        // Сортируем по дате создания, чтобы новые были первыми
         List<ItemRequest> requests = requestRepository.findByRequesterIdOrderByCreatedDesc(userId);
         return requests.stream()
-                .map(requestMapper::toDto) // <--- Просто маппим, вся магия происходит в маппере
+                .map(requestMapper::toDto)
                 .collect(Collectors.toList());
     }
 
@@ -57,14 +56,13 @@ public class ItemRequestService {
         Pageable pageable = PageRequest.of(from / size, size, Sort.by("created").descending());
         List<ItemRequest> requests = requestRepository.findByRequesterIdNot(userId, pageable);
         return requests.stream()
-                .map(requestMapper::toDto) // <--- Просто маппим
+                .map(requestMapper::toDto)
                 .collect(Collectors.toList());
     }
 
     public ItemRequestDto getRequestById(Long userId, Long requestId) {
         userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
         ItemRequest request = requestRepository.findById(requestId).orElseThrow(() -> new NotFoundException("Request not found"));
-        // Эта строка должна работать, если request_id корректно сохраняется
         List<ItemDto> items = itemRepository.findByRequestId(requestId).stream()
                 .map(itemMapper::toDto)
                 .collect(Collectors.toList());
