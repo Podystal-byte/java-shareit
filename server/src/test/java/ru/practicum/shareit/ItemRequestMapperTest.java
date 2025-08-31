@@ -11,66 +11,70 @@ import ru.practicum.shareit.request.dto.ItemRequestMapperImpl;
 import ru.practicum.shareit.user.model.User;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
+import java.util.ArrayList;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 @SpringBootTest(classes = {ItemRequestMapperImpl.class, ItemMapperImpl.class})
-class ItemRequestMapperTest {
+public class ItemRequestMapperTest {
 
     @Autowired
     private ItemRequestMapper itemRequestMapper;
 
     @Test
-    void toItem() {
+    public void toItem_whenItemRequestDtoIsValid_thenCorrectlyMapped() {
+        ItemRequestDto itemRequestDto = new ItemRequestDto();
+        itemRequestDto.setId(1L);
+        itemRequestDto.setDescription("Test description");
+        itemRequestDto.setCreated(LocalDateTime.now());
+        itemRequestDto.setItems(null);
 
-        ItemRequestDto dto = new ItemRequestDto();
-        dto.setId(1L);
-        dto.setDescription("Need a hammer");
-        dto.setCreated(LocalDateTime.now());
-        dto.setItems(Collections.emptyList());
+        ItemRequest itemRequest = itemRequestMapper.toItem(itemRequestDto);
 
-        ItemRequest result = itemRequestMapper.toItem(dto);
-
-        assertNotNull(result);
-        assertEquals(dto.getId(), result.getId());
-        assertEquals(dto.getDescription(), result.getDescription());
-        assertEquals(dto.getCreated(), result.getCreated());
+        assertEquals(itemRequestDto.getId(), itemRequest.getId());
+        assertEquals(itemRequestDto.getDescription(), itemRequest.getDescription());
+        assertEquals(itemRequestDto.getCreated(), itemRequest.getCreated());
+        assertNull(itemRequest.getItems());
     }
 
     @Test
-    void toItem_whenDtoIsNull_shouldReturnNull() {
-        ItemRequest result = itemRequestMapper.toItem(null);
+    public void toItem_whenItemRequestDtoIsNull_thenReturnsNull() {
+        ItemRequestDto itemRequestDto = null;
 
-        assertNull(result);
+        ItemRequest itemRequest = itemRequestMapper.toItem(itemRequestDto);
+
+        assertNull(itemRequest);
     }
 
     @Test
-    void toDto() {
+    public void toDto_whenItemRequestIsValid_thenCorrectlyMapped() {
         User requester = new User();
         requester.setId(1L);
+        requester.setName("User Name");
+        requester.setEmail("user@test.ru");
 
         ItemRequest itemRequest = new ItemRequest();
         itemRequest.setId(1L);
-        itemRequest.setDescription("Need a screwdriver");
+        itemRequest.setDescription("Test description");
         itemRequest.setRequester(requester);
         itemRequest.setCreated(LocalDateTime.now());
-        itemRequest.setItems(Collections.emptyList());
+        itemRequest.setItems(new ArrayList<>());
 
-        ItemRequestDto result = itemRequestMapper.toDto(itemRequest);
+        ItemRequestDto itemRequestDto = itemRequestMapper.toDto(itemRequest);
 
-
-        assertNotNull(result);
-        assertEquals(itemRequest.getId(), result.getId());
-        assertEquals(itemRequest.getDescription(), result.getDescription());
-        assertEquals(itemRequest.getCreated(), result.getCreated());
-        assertTrue(result.getItems().isEmpty());
+        assertEquals(itemRequest.getId(), itemRequestDto.getId());
+        assertEquals(itemRequest.getDescription(), itemRequestDto.getDescription());
+        assertEquals(itemRequest.getCreated(), itemRequestDto.getCreated());
+        assertEquals(0, itemRequestDto.getItems().size());
     }
 
     @Test
-    void toDto_whenRequestIsNull_shouldReturnNull() {
-        ItemRequestDto result = itemRequestMapper.toDto(null);
+    public void toDto_whenItemRequestIsNull_thenReturnsNull() {
+        ItemRequest itemRequest = null;
 
-        assertNull(result);
+        ItemRequestDto itemRequestDto = itemRequestMapper.toDto(itemRequest);
+
+        assertNull(itemRequestDto);
     }
 }

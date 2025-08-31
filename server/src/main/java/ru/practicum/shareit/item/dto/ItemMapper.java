@@ -14,11 +14,5 @@ public interface ItemMapper {
     @Mapping(source = "owner.id", target = "ownerId")
     ItemDto toDto(Item item);
 
-
-    @Mapping(source = "item.id", target = "id")
-    @Mapping(target = "lastBooking", source = "lastBooking")
-    @Mapping(target = "nextBooking", source = "nextBooking")
-    @Mapping(target = "comments", source = "comments")
-    @Mapping(source = "item.owner.id", target = "ownerId")
-    ItemWithBookingsAndCommentsDto toItemWithBookingsAndCommentsDto(Item item, Booking lastBooking, Booking nextBooking, List<Comment> comments);
+    Item fromDto(ItemDto itemDto);
 }
