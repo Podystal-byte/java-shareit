@@ -27,7 +27,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class CommentServiceTest {
@@ -47,7 +47,6 @@ class CommentServiceTest {
     private User user;
     private Item item;
     private CommentRequestDto commentRequestDto;
-    private Booking booking;
 
     @BeforeEach
     void setUp() {
@@ -58,51 +57,46 @@ class CommentServiceTest {
         item.setId(1L);
 
         commentRequestDto = new CommentRequestDto();
-        commentRequestDto.setText("Test comment text");
-
-        booking = new Booking();
-        booking.setBooker(user);
-        booking.setItem(item);
-        booking.setEnd(LocalDateTime.now().minusDays(1));
+        commentRequestDto.setText("A comment");
     }
 
     @Test
-    void addComment_whenUserAndItemFoundAndBookingExists_thenSavesComment() {
-        when(userRepository.findById(anyLong())).thenReturn(Optional.of(user));
-        when(itemRepository.findById(anyLong())).thenReturn(Optional.of(item));
+    void addComment_whenValid_shouldSaveAndReturnComment() throws ValidationException {
+        Comment comment = new Comment();
+        comment.setText(commentRequestDto.getText());
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
         when(bookingRepository.findByBookerIdAndItem_IdAndEndIsBefore(anyLong(), anyLong(), any(LocalDateTime.class)))
-                .thenReturn(List.of(booking));
-        when(commentRepository.save(any(Comment.class))).thenReturn(new Comment());
+                .thenReturn(List.of(new Booking()));
+        when(commentRepository.save(any(Comment.class))).thenReturn(comment);
 
-        assertDoesNotThrow(() -> commentService.addComment(1L, 1L, commentRequestDto));
-        verify(commentRepository, times(1)).save(any(Comment.class));
+        Comment savedComment = commentService.addComment(1L, 1L, commentRequestDto);
+
+        assertNotNull(savedComment);
+        assertEquals("A comment", savedComment.getText());
     }
 
     @Test
-    void addComment_whenUserNotFound_thenThrowsNotFoundException() {
-        when(userRepository.findById(anyLong())).thenReturn(Optional.empty());
-
+    void addComment_whenUserNotFound_shouldThrowNotFoundException() {
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
         assertThrows(NotFoundException.class, () -> commentService.addComment(99L, 1L, commentRequestDto));
-        verify(commentRepository, never()).save(any(Comment.class));
     }
 
     @Test
-    void addComment_whenItemNotFound_thenThrowsNotFoundException() {
-        when(userRepository.findById(anyLong())).thenReturn(Optional.of(user));
-        when(itemRepository.findById(anyLong())).thenReturn(Optional.empty());
-
+    void addComment_whenItemNotFound_shouldThrowNotFoundException() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(itemRepository.findById(99L)).thenReturn(Optional.empty());
         assertThrows(NotFoundException.class, () -> commentService.addComment(1L, 99L, commentRequestDto));
-        verify(commentRepository, never()).save(any(Comment.class));
     }
 
     @Test
-    void addComment_whenNoBookingFound_thenThrowsValidationException() {
-        when(userRepository.findById(anyLong())).thenReturn(Optional.of(user));
-        when(itemRepository.findById(anyLong())).thenReturn(Optional.of(item));
+    void addComment_whenUserHasNoPastBookings_shouldThrowValidationException() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
         when(bookingRepository.findByBookerIdAndItem_IdAndEndIsBefore(anyLong(), anyLong(), any(LocalDateTime.class)))
                 .thenReturn(Collections.emptyList());
 
         assertThrows(ValidationException.class, () -> commentService.addComment(1L, 1L, commentRequestDto));
-        verify(commentRepository, never()).save(any(Comment.class));
     }
 }

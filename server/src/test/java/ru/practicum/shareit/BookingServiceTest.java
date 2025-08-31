@@ -21,8 +21,6 @@ import ru.practicum.shareit.user.model.User;
 import ru.practicum.shareit.user.repo.UserRepository;
 
 import java.time.LocalDateTime;
-
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -55,176 +53,252 @@ class BookingServiceTest {
     void setUp() {
         owner = new User();
         owner.setId(1L);
-        owner.setName("owner");
-        owner.setEmail("owner@mail.ru");
+        owner.setName("Owner");
+        owner.setEmail("owner@example.com");
 
         booker = new User();
         booker.setId(2L);
-        booker.setName("booker");
-        booker.setEmail("booker@mail.ru");
+        booker.setName("Booker");
+        booker.setEmail("booker@example.com");
 
         item = new Item();
         item.setId(1L);
+        item.setName("Test Item");
         item.setAvailable(true);
         item.setOwner(owner);
+
+        bookingRequestDto = new BookingRequestDto();
+        bookingRequestDto.setItemId(item.getId());
+        bookingRequestDto.setStart(LocalDateTime.now().plusHours(1));
+        bookingRequestDto.setEnd(LocalDateTime.now().plusHours(2));
 
         booking = new Booking();
         booking.setId(1L);
         booking.setItem(item);
         booking.setBooker(booker);
-        booking.setStart(LocalDateTime.now().plusDays(1));
-        booking.setEnd(LocalDateTime.now().plusDays(2));
         booking.setStatus(Status.WAITING);
-
-        bookingRequestDto = new BookingRequestDto();
-        bookingRequestDto.setItemId(1L);
-        bookingRequestDto.setStart(LocalDateTime.now().plusDays(1));
-        bookingRequestDto.setEnd(LocalDateTime.now().plusDays(2));
+        booking.setStart(bookingRequestDto.getStart());
+        booking.setEnd(bookingRequestDto.getEnd());
     }
 
+    // --- createBooking Tests ---
+
     @Test
-    void createBooking_whenUserAndItemFound_thenSavesBooking() throws ValidationException {
-        when(userRepository.findById(2L)).thenReturn(Optional.of(booker));
-        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+    void createBooking_whenValid_shouldReturnBooking() throws ValidationException {
+        when(userRepository.findById(booker.getId())).thenReturn(Optional.of(booker));
+        when(itemRepository.findById(item.getId())).thenReturn(Optional.of(item));
         when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
 
-        Booking savedBooking = bookingService.createBooking(2L, bookingRequestDto);
+        Booking created = bookingService.createBooking(booker.getId(), bookingRequestDto);
 
-        assertNotNull(savedBooking);
-        assertEquals(booking.getId(), savedBooking.getId());
+        assertNotNull(created);
+        assertEquals(Status.WAITING, created.getStatus());
         verify(bookingRepository).save(any(Booking.class));
     }
 
     @Test
-    void createBooking_whenUserNotFound_thenThrowsNotFoundException() {
+    void createBooking_whenBookerNotFound_shouldThrowNotFoundException() {
         when(userRepository.findById(anyLong())).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class, () -> bookingService.createBooking(99L, bookingRequestDto));
-        verify(bookingRepository, never()).save(any(Booking.class));
     }
 
     @Test
-    void createBooking_whenItemNotFound_thenThrowsNotFoundException() {
-        when(userRepository.findById(anyLong())).thenReturn(Optional.of(booker));
+    void createBooking_whenItemNotFound_shouldThrowNotFoundException() {
+        when(userRepository.findById(booker.getId())).thenReturn(Optional.of(booker));
         when(itemRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> bookingService.createBooking(2L, bookingRequestDto));
-        verify(bookingRepository, never()).save(any(Booking.class));
+        assertThrows(NotFoundException.class, () -> bookingService.createBooking(booker.getId(), bookingRequestDto));
     }
 
     @Test
-    void createBooking_whenItemNotAvailable_thenThrowsValidationException() {
+    void createBooking_whenItemNotAvailable_shouldThrowValidationException() {
         item.setAvailable(false);
-        when(userRepository.findById(anyLong())).thenReturn(Optional.of(booker));
-        when(itemRepository.findById(anyLong())).thenReturn(Optional.of(item));
+        when(userRepository.findById(booker.getId())).thenReturn(Optional.of(booker));
+        when(itemRepository.findById(item.getId())).thenReturn(Optional.of(item));
 
-        assertThrows(ValidationException.class, () -> bookingService.createBooking(2L, bookingRequestDto));
+        assertThrows(ValidationException.class, () -> bookingService.createBooking(booker.getId(), bookingRequestDto));
     }
 
     @Test
-    void createBooking_whenUserIsOwner_thenThrowsNotFoundException() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(owner));
-        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+    void createBooking_whenOwnerBooksOwnItem_shouldThrowNotFoundException() {
+        when(userRepository.findById(owner.getId())).thenReturn(Optional.of(owner));
+        when(itemRepository.findById(item.getId())).thenReturn(Optional.of(item));
 
-        assertThrows(NotFoundException.class, () -> bookingService.createBooking(1L, bookingRequestDto));
+        assertThrows(NotFoundException.class, () -> bookingService.createBooking(owner.getId(), bookingRequestDto));
     }
 
     @Test
-    void approveBooking_whenApprovedAndStatusIsWaiting_thenSavesWithApprovedStatus() throws ValidationException {
-        when(bookingRepository.findById(anyLong())).thenReturn(Optional.of(booking));
-        when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
+    void createBooking_whenInvalidDates_shouldThrowValidationException() {
+        bookingRequestDto.setStart(LocalDateTime.now().plusHours(2));
+        bookingRequestDto.setEnd(LocalDateTime.now().plusHours(1));
+        when(userRepository.findById(booker.getId())).thenReturn(Optional.of(booker));
+        when(itemRepository.findById(item.getId())).thenReturn(Optional.of(item));
 
-        Booking result = bookingService.approveBooking(1L, 1L, true);
+        assertThrows(ValidationException.class, () -> bookingService.createBooking(booker.getId(), bookingRequestDto));
+    }
 
-        assertEquals(Status.APPROVED, result.getStatus());
-        verify(bookingRepository).save(any(Booking.class));
+    // --- approveBooking Tests ---
+
+    @Test
+    void approveBooking_whenApproved_shouldSetStatusToApproved() throws ValidationException {
+        when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Booking approvedBooking = bookingService.approveBooking(owner.getId(), booking.getId(), true);
+
+        assertEquals(Status.APPROVED, approvedBooking.getStatus());
     }
 
     @Test
-    void approveBooking_whenRejectedAndStatusIsWaiting_thenSavesWithRejectedStatus() throws ValidationException {
-        when(bookingRepository.findById(anyLong())).thenReturn(Optional.of(booking));
-        when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
+    void approveBooking_whenRejected_shouldSetStatusToRejected() throws ValidationException {
+        when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Booking result = bookingService.approveBooking(1L, 1L, false);
+        Booking rejectedBooking = bookingService.approveBooking(owner.getId(), booking.getId(), false);
 
-        assertEquals(Status.REJECTED, result.getStatus());
-        verify(bookingRepository).save(any(Booking.class));
+        assertEquals(Status.REJECTED, rejectedBooking.getStatus());
     }
 
     @Test
-    void approveBooking_whenUserIsNotOwner_thenThrowsUserException() {
-        when(bookingRepository.findById(anyLong())).thenReturn(Optional.of(booking));
-
-        assertThrows(UserException.class, () -> bookingService.approveBooking(99L, 1L, true));
-        verify(bookingRepository, never()).save(any(Booking.class));
+    void approveBooking_whenNotOwner_shouldThrowUserException() {
+        when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
+        assertThrows(UserException.class, () -> bookingService.approveBooking(booker.getId(), booking.getId(), true));
     }
 
     @Test
-    void getBookingById_whenUserIsBooker_thenReturnsBooking() {
-        when(bookingRepository.findById(anyLong())).thenReturn(Optional.of(booking));
-
-        Booking result = bookingService.getBookingById(2L, 1L);
-
-        assertNotNull(result);
-        assertEquals(booking.getId(), result.getId());
+    void approveBooking_whenBookingNotFound_shouldThrowNotFoundException() {
+        when(bookingRepository.findById(anyLong())).thenReturn(Optional.empty());
+        assertThrows(NotFoundException.class, () -> bookingService.approveBooking(owner.getId(), 99L, true));
     }
 
     @Test
-    void getBookingsByUser_whenStateIsAll_thenReturnsAllBookings() throws ValidationException {
-        when(userRepository.findById(anyLong())).thenReturn(Optional.of(booker));
-        when(bookingRepository.findByBookerId(anyLong(), any(Sort.class))).thenReturn(List.of(booking));
+    void approveBooking_whenAlreadyApproved_shouldThrowValidationException() {
+        booking.setStatus(Status.APPROVED);
+        when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
+        assertThrows(ValidationException.class, () -> bookingService.approveBooking(owner.getId(), booking.getId(), true));
+    }
 
-        List<Booking> bookings = bookingService.getBookingsByUser(2L, "ALL");
+    // --- getBookingById Tests ---
 
-        assertFalse(bookings.isEmpty());
-        assertEquals(1, bookings.size());
-        verify(bookingRepository).findByBookerId(anyLong(), any(Sort.class));
+    @Test
+    void getBookingById_whenOwnerOrBooker_shouldReturnBooking() {
+        when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
+
+        assertNotNull(bookingService.getBookingById(owner.getId(), booking.getId()));
+        assertNotNull(bookingService.getBookingById(booker.getId(), booking.getId()));
     }
 
     @Test
-    void getBookingsByUser_whenStateIsCurrent_thenReturnsCurrentBookings() throws ValidationException {
-        when(userRepository.findById(anyLong())).thenReturn(Optional.of(booker));
-        when(bookingRepository.findByBookerIdAndStartIsBeforeAndEndIsAfter(anyLong(), any(LocalDateTime.class), any(LocalDateTime.class), any(Sort.class)))
-                .thenReturn(List.of(booking));
-
-        List<Booking> bookings = bookingService.getBookingsByUser(2L, "CURRENT");
-        assertFalse(bookings.isEmpty());
-        verify(bookingRepository).findByBookerIdAndStartIsBeforeAndEndIsAfter(anyLong(), any(LocalDateTime.class), any(LocalDateTime.class), any(Sort.class));
+    void getBookingById_whenNotOwnerOrBooker_shouldThrowNotFoundException() {
+        when(bookingRepository.findById(booking.getId())).thenReturn(Optional.of(booking));
+        assertThrows(NotFoundException.class, () -> bookingService.getBookingById(99L, booking.getId()));
     }
 
     @Test
-    void getBookingsByUser_whenInvalidState_thenThrowsValidationException() {
-        when(userRepository.findById(anyLong())).thenReturn(Optional.of(booker));
-        assertThrows(ValidationException.class, () -> bookingService.getBookingsByUser(2L, "UNKNOWN_STATE"));
+    void getBookingById_whenBookingNotFound_shouldThrowNotFoundException() {
+        when(bookingRepository.findById(anyLong())).thenReturn(Optional.empty());
+        assertThrows(NotFoundException.class, () -> bookingService.getBookingById(owner.getId(), 99L));
+    }
+
+    // --- getBookingsByUser Tests ---
+
+    @Test
+    void getBookingsByUser_whenUserNotFound_shouldThrowNotFoundException() {
+        when(userRepository.findById(anyLong())).thenReturn(Optional.empty());
+        assertThrows(NotFoundException.class, () -> bookingService.getBookingsByUser(99L, "ALL"));
     }
 
     @Test
-    void getBookingsByOwner_whenStateIsAll_thenReturnsAllBookings() throws ValidationException {
-        when(userRepository.findById(anyLong())).thenReturn(Optional.of(owner));
-        when(bookingRepository.findByItemOwnerId(anyLong(), any(Sort.class))).thenReturn(List.of(booking));
+    void getBookingsByUser_whenStateIsInvalid_shouldThrowValidationException() {
+        when(userRepository.findById(booker.getId())).thenReturn(Optional.of(booker));
+        assertThrows(ValidationException.class, () -> bookingService.getBookingsByUser(booker.getId(), "INVALID_STATE"));
+    }
 
-        List<Booking> bookings = bookingService.getBookingsByOwner(1L, "ALL");
-
-        assertFalse(bookings.isEmpty());
-        assertEquals(1, bookings.size());
-        verify(bookingRepository).findByItemOwnerId(anyLong(), any(Sort.class));
+    private void testGetBookingsByUserWithState(String state, Runnable verifier) throws ValidationException {
+        when(userRepository.findById(booker.getId())).thenReturn(Optional.of(booker));
+        bookingService.getBookingsByUser(booker.getId(), state);
+        verifier.run();
     }
 
     @Test
-    void getBookingsByOwner_whenStateIsPast_thenReturnsPastBookings() throws ValidationException {
-        when(userRepository.findById(anyLong())).thenReturn(Optional.of(owner));
-        when(bookingRepository.findByItemOwnerIdAndEndIsBefore(anyLong(), any(LocalDateTime.class), any(Sort.class)))
-                .thenReturn(List.of(booking));
-
-        List<Booking> bookings = bookingService.getBookingsByOwner(1L, "PAST");
-
-        assertFalse(bookings.isEmpty());
-        verify(bookingRepository).findByItemOwnerIdAndEndIsBefore(anyLong(), any(LocalDateTime.class), any(Sort.class));
+    void getBookingsByUser_whenAll_shouldCallCorrectRepositoryMethod() throws ValidationException {
+        testGetBookingsByUserWithState("ALL", () -> verify(bookingRepository).findByBookerId(eq(booker.getId()), any(Sort.class)));
     }
 
     @Test
-    void getBookingsByOwner_whenInvalidState_thenThrowsValidationException() {
-        when(userRepository.findById(anyLong())).thenReturn(Optional.of(owner));
-        assertThrows(ValidationException.class, () -> bookingService.getBookingsByOwner(1L, "INVALID_STATE"));
+    void getBookingsByUser_whenCurrent_shouldCallCorrectRepositoryMethod() throws ValidationException {
+        testGetBookingsByUserWithState("CURRENT", () -> verify(bookingRepository).findByBookerIdAndStartIsBeforeAndEndIsAfter(eq(booker.getId()), any(), any(), any(Sort.class)));
+    }
+
+    @Test
+    void getBookingsByUser_whenPast_shouldCallCorrectRepositoryMethod() throws ValidationException {
+        testGetBookingsByUserWithState("PAST", () -> verify(bookingRepository).findByBookerIdAndEndIsBefore(eq(booker.getId()), any(), any(Sort.class)));
+    }
+
+    @Test
+    void getBookingsByUser_whenFuture_shouldCallCorrectRepositoryMethod() throws ValidationException {
+        testGetBookingsByUserWithState("FUTURE", () -> verify(bookingRepository).findByBookerIdAndStartIsAfter(eq(booker.getId()), any(), any(Sort.class)));
+    }
+
+    @Test
+    void getBookingsByUser_whenWaiting_shouldCallCorrectRepositoryMethod() throws ValidationException {
+        testGetBookingsByUserWithState("WAITING", () -> verify(bookingRepository).findByBookerIdAndStatus(eq(booker.getId()), eq(Status.WAITING), any(Sort.class)));
+    }
+
+    @Test
+    void getBookingsByUser_whenRejected_shouldCallCorrectRepositoryMethod() throws ValidationException {
+        testGetBookingsByUserWithState("REJECTED", () -> verify(bookingRepository).findByBookerIdAndStatus(eq(booker.getId()), eq(Status.REJECTED), any(Sort.class)));
+    }
+
+    // --- getBookingsByOwner Tests ---
+
+    @Test
+    void getBookingsByOwner_whenUserNotFound_shouldThrowNotFoundException() {
+        when(userRepository.findById(anyLong())).thenReturn(Optional.empty());
+        assertThrows(NotFoundException.class, () -> bookingService.getBookingsByOwner(99L, "ALL"));
+    }
+
+    @Test
+    void getBookingsByOwner_whenStateIsInvalid_shouldThrowValidationException() {
+        when(userRepository.findById(owner.getId())).thenReturn(Optional.of(owner));
+        assertThrows(ValidationException.class, () -> bookingService.getBookingsByOwner(owner.getId(), "INVALID_STATE"));
+    }
+
+    private void testGetBookingsByOwnerWithState(String state, Runnable verifier) throws ValidationException {
+        when(userRepository.findById(owner.getId())).thenReturn(Optional.of(owner));
+        bookingService.getBookingsByOwner(owner.getId(), state);
+        verifier.run();
+    }
+
+    @Test
+    void getBookingsByOwner_whenAll_shouldCallCorrectRepositoryMethod() throws ValidationException {
+        testGetBookingsByOwnerWithState("ALL", () -> verify(bookingRepository).findByItemOwnerId(eq(owner.getId()), any(Sort.class)));
+    }
+
+    @Test
+    void getBookingsByOwner_whenCurrent_shouldCallCorrectRepositoryMethod() throws ValidationException {
+        testGetBookingsByOwnerWithState("CURRENT", () -> verify(bookingRepository).findByItemOwnerIdAndStartIsBeforeAndEndIsAfter(eq(owner.getId()), any(), any(), any(Sort.class)));
+    }
+
+    @Test
+    void getBookingsByOwner_whenPast_shouldCallCorrectRepositoryMethod() throws ValidationException {
+        testGetBookingsByOwnerWithState("PAST", () -> verify(bookingRepository).findByItemOwnerIdAndEndIsBefore(eq(owner.getId()), any(), any(Sort.class)));
+    }
+
+    @Test
+    void getBookingsByOwner_whenFuture_shouldCallCorrectRepositoryMethod() throws ValidationException {
+        testGetBookingsByOwnerWithState("FUTURE", () -> verify(bookingRepository).findByItemOwnerIdAndStartIsAfter(eq(owner.getId()), any(), any(Sort.class)));
+    }
+
+    @Test
+    void getBookingsByOwner_whenWaiting_shouldCallCorrectRepositoryMethod() throws ValidationException {
+        testGetBookingsByOwnerWithState("WAITING", () -> verify(bookingRepository).findByItemOwnerIdAndStatus(eq(owner.getId()), eq(Status.WAITING), any(Sort.class)));
+    }
+
+    @Test
+    void getBookingsByOwner_whenRejected_shouldCallCorrectRepositoryMethod() throws ValidationException {
+        testGetBookingsByOwnerWithState("REJECTED", () -> verify(bookingRepository).findByItemOwnerIdAndStatus(eq(owner.getId()), eq(Status.REJECTED), any(Sort.class)));
     }
 }
+

@@ -147,4 +147,15 @@ class UserServiceTest {
         assertEquals(2, foundUsers.size());
         verify(userRepository, times(1)).findAll();
     }
+
+    @Test
+    void shouldThrowConflictExceptionWhenEmailAlreadyExists() {
+        User userToAdd = new User();
+        userToAdd.setEmail("test@test.com");
+        userToAdd.setId(1L);
+
+        when(userRepository.existsByEmail("test@test.com")).thenReturn(true);
+
+        assertThrows(ConflictException.class, () -> userService.addUser(userToAdd));
+    }
 }
