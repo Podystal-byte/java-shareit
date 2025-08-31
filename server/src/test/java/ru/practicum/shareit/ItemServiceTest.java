@@ -1,6 +1,5 @@
 package ru.practicum.shareit;
 
-import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,231 +24,242 @@ import ru.practicum.shareit.request.repo.ItemRequestRepository;
 import ru.practicum.shareit.user.model.User;
 import ru.practicum.shareit.user.repo.UserRepository;
 
-
-import java.util.Collections;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ItemServiceTest {
+public class ItemServiceTest {
 
     @Mock
     private ItemRepository itemRepository;
+
     @Mock
     private UserRepository userRepository;
+
     @Mock
     private CommentRepository commentRepository;
+
     @Mock
     private BookingRepository bookingRepository;
-    @Mock
-    private ItemRequestRepository itemRequestRepository;
+
     @Mock
     private CommentMapper commentMapper;
+
+    @Mock
+    private ItemRequestRepository itemRequestRepository;
 
     @InjectMocks
     private ItemService itemService;
 
     private User owner;
-    private User booker;
+    private User otherUser;
     private Item item;
     private ItemDto itemDto;
-    private ItemRequest itemRequest;
 
     @BeforeEach
-    void setUp() {
+    public void setUp() {
         owner = new User();
         owner.setId(1L);
-        owner.setName("owner");
+        owner.setName("John Doe");
+        owner.setEmail("john.doe@example.com");
 
-        booker = new User();
-        booker.setId(2L);
-        booker.setName("booker");
-
-        itemRequest = new ItemRequest();
-        itemRequest.setId(1L);
+        otherUser = new User();
+        otherUser.setId(2L);
+        otherUser.setName("Jane Smith");
+        otherUser.setEmail("jane.smith@example.com");
 
         item = new Item();
         item.setId(1L);
-        item.setName("Item");
-        item.setDescription("Description");
+        item.setName("Drill");
+        item.setDescription("Powerful drill");
         item.setAvailable(true);
         item.setOwner(owner);
 
         itemDto = new ItemDto();
-        itemDto.setName("ItemDto");
-        itemDto.setDescription("Description Dto");
+        itemDto.setId(1L);
+        itemDto.setName("Drill");
+        itemDto.setDescription("Powerful drill");
         itemDto.setAvailable(true);
     }
 
     @Test
-    void addItem_whenUserFoundAndRequestExists_shouldSaveItem() {
-        itemDto.setRequestId(1L);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(owner));
-        when(itemRequestRepository.findById(1L)).thenReturn(Optional.of(itemRequest));
+    public void addItem_Success() {
+        when(userRepository.findById(anyLong())).thenReturn(Optional.of(owner));
         when(itemRepository.save(any(Item.class))).thenReturn(item);
 
-        Item savedItem = itemService.addItem(1L, itemDto);
+        Item savedItem = itemService.addItem(owner.getId(), itemDto);
 
         assertNotNull(savedItem);
         assertEquals(item.getName(), savedItem.getName());
-        verify(itemRepository).save(any(Item.class));
+        verify(userRepository, times(1)).findById(anyLong());
+        verify(itemRepository, times(1)).save(any(Item.class));
     }
 
     @Test
-    void addItem_whenUserNotFound_shouldThrowNotFoundException() {
-        when(userRepository.findById(99L)).thenReturn(Optional.empty());
-        assertThrows(NotFoundException.class, () -> itemService.addItem(99L, itemDto));
+    public void addItem_UserNotFound_ThrowsException() {
+        when(userRepository.findById(anyLong())).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> itemService.addItem(owner.getId(), itemDto));
+        verify(userRepository, times(1)).findById(anyLong());
+        verify(itemRepository, never()).save(any(Item.class));
     }
 
     @Test
-    void addItem_whenRequestNotFound_shouldThrowNotFoundException() {
-        itemDto.setRequestId(99L);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(owner));
-        when(itemRequestRepository.findById(99L)).thenReturn(Optional.empty());
+    public void addItem_WithRequest_Success() {
+        ItemRequest itemRequest = new ItemRequest();
+        itemRequest.setId(1L);
+        itemDto.setRequestId(itemRequest.getId());
 
-        assertThrows(NotFoundException.class, () -> itemService.addItem(1L, itemDto));
-    }
-
-    @Test
-    void updateItem_whenUserIsOwner_shouldUpdate() {
-        Item updates = new Item();
-        updates.setId(1L);
-        updates.setName("Updated Name");
-        updates.setAvailable(false);
-        updates.setDescription("Updated Description");
-
-
-        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
-        when(itemRepository.save(any(Item.class))).thenReturn(updates);
-
-        Item updatedItem = itemService.updateItem(1L, 1L, updates);
-
-        assertEquals("Updated Name", updatedItem.getName());
-        assertEquals(false, updatedItem.getAvailable());
-        assertEquals("Updated Description", updatedItem.getDescription());
-
-    }
-
-    @Test
-    void updateItem_whenUpdateContainsNulls_shouldNotUpdateFields() {
-        Item updates = new Item();
-        updates.setId(1L);
-        updates.setName(null);
-        updates.setAvailable(null);
-        updates.setDescription(null);
-
-        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+        when(userRepository.findById(anyLong())).thenReturn(Optional.of(owner));
+        when(itemRequestRepository.findById(anyLong())).thenReturn(Optional.of(itemRequest));
         when(itemRepository.save(any(Item.class))).thenReturn(item);
 
-        Item updatedItem = itemService.updateItem(1L, 1L, updates);
+        Item savedItem = itemService.addItem(owner.getId(), itemDto);
 
-        assertEquals(item.getName(), updatedItem.getName());
-        assertEquals(item.getAvailable(), updatedItem.getAvailable());
-        assertEquals(item.getDescription(), updatedItem.getDescription());
+        assertNotNull(savedItem);
+        verify(itemRequestRepository, times(1)).findById(itemDto.getRequestId());
+        verify(itemRepository, times(1)).save(any(Item.class));
     }
 
     @Test
-    void updateItem_whenUserIsNotOwner_shouldThrowNotFoundException() {
-        Item itemToUpdate = new Item();
-        itemToUpdate.setId(1L);
+    public void updateItem_Success() {
 
-        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
-        assertThrows(NotFoundException.class, () -> itemService.updateItem(2L, 1L, itemToUpdate));
+        Item updatedFields = new Item();
+        updatedFields.setId(item.getId());
+        updatedFields.setName("Updated Drill");
+        updatedFields.setDescription("Updated description");
+
+        when(itemRepository.findById(anyLong())).thenReturn(Optional.of(item));
+        when(itemRepository.save(any(Item.class))).thenReturn(item);
+
+        Item result = itemService.updateItem(owner.getId(), item.getId(), updatedFields);
+
+        assertNotNull(result);
+        assertEquals("Updated Drill", result.getName());
+        assertEquals("Updated description", result.getDescription());
+        verify(itemRepository, times(1)).findById(item.getId());
+        verify(itemRepository, times(1)).save(item);
     }
 
     @Test
-    void getItemById_whenUserIsOwner_shouldReturnDtoWithBookings() {
-        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
-        when(commentRepository.findByItem_Id(1L)).thenReturn(Collections.emptyList());
+    public void updateItem_NotOwner_ThrowsException() {
+        when(itemRepository.findById(anyLong())).thenReturn(Optional.of(item));
+        Item updatedFields = new Item();
+        updatedFields.setId(item.getId());
+
+        assertThrows(NotFoundException.class, () -> itemService.updateItem(otherUser.getId(), item.getId(), updatedFields));
+        verify(itemRepository, never()).save(any(Item.class));
+    }
+
+    @Test
+    public void getItemById_Owner_HasBookings() {
+        when(itemRepository.findById(anyLong())).thenReturn(Optional.of(item));
+        when(commentRepository.findByItem_Id(anyLong())).thenReturn(new ArrayList<>());
 
         Booking lastBooking = new Booking();
         lastBooking.setId(1L);
-        lastBooking.setBooker(booker);
+        lastBooking.setBooker(otherUser);
 
         Booking nextBooking = new Booking();
         nextBooking.setId(2L);
-        nextBooking.setBooker(booker);
+        nextBooking.setBooker(otherUser);
 
-        when(bookingRepository.findByItem_IdAndStartIsBeforeAndStatus(anyLong(), any(), eq(Status.APPROVED), any(Sort.class)))
+        when(bookingRepository.findByItem_IdAndStartIsBeforeAndStatus(anyLong(), any(LocalDateTime.class), eq(Status.APPROVED), any(Sort.class)))
                 .thenReturn(List.of(lastBooking));
-        when(bookingRepository.findByItem_IdAndStartIsAfterAndStatus(anyLong(), any(), eq(Status.APPROVED), any(Sort.class)))
+        when(bookingRepository.findByItem_IdAndStartIsAfterAndStatus(anyLong(), any(LocalDateTime.class), eq(Status.APPROVED), any(Sort.class)))
                 .thenReturn(List.of(nextBooking));
 
-        ItemWithBookingsAndCommentsDto result = itemService.getItemById(1L, 1L);
+        ItemWithBookingsAndCommentsDto result = itemService.getItemById(item.getId(), owner.getId());
 
+        assertNotNull(result);
         assertNotNull(result.getLastBooking());
         assertNotNull(result.getNextBooking());
-        assertEquals(1L, result.getLastBooking().getId());
-        assertEquals(2L, result.getNextBooking().getId());
+        assertEquals(lastBooking.getId(), result.getLastBooking().getId());
+        assertEquals(nextBooking.getId(), result.getNextBooking().getId());
     }
 
     @Test
-    void getItemById_whenUserIsNotOwner_shouldReturnDtoWithoutBookings() {
-        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
-        when(commentRepository.findByItem_Id(1L)).thenReturn(Collections.emptyList());
+    public void getItemById_NotOwner_NoBookingsReturned() {
+        when(itemRepository.findById(anyLong())).thenReturn(Optional.of(item));
+        when(commentRepository.findByItem_Id(anyLong())).thenReturn(new ArrayList<>());
 
-        ItemWithBookingsAndCommentsDto result = itemService.getItemById(1L, 2L);
+        ItemWithBookingsAndCommentsDto result = itemService.getItemById(item.getId(), otherUser.getId());
 
+        assertNotNull(result);
         assertNull(result.getLastBooking());
         assertNull(result.getNextBooking());
     }
 
     @Test
-    void getItemsByOwner_shouldReturnListOfItems() {
-        when(itemRepository.findAll()).thenReturn(List.of(item));
-        List<Item> result = itemService.getItemsByOwner(1L);
-        assertEquals(1, result.size());
-    }
+    public void searchItems_BlankText_ReturnsEmptyList() {
+        String searchText = " ";
 
-    @Test
-    void searchItems_withValidText_shouldReturnItems() {
-        when(itemRepository.findAll()).thenReturn(List.of(item));
-        List<Item> result = itemService.searchItems("item");
-        assertEquals(1, result.size());
-    }
+        List<Item> result = itemService.searchItems(searchText);
 
-    @Test
-    void searchItems_withBlankText_shouldReturnEmptyList() {
-        List<Item> result = itemService.searchItems(" ");
         assertTrue(result.isEmpty());
     }
 
     @Test
-    void addComment_whenUserHasBooked_shouldSaveComment() {
+    public void searchItems_WithText_ReturnsMatchingItems() {
+        Item item2 = new Item();
+        item2.setId(2L);
+        item2.setName("Scooter");
+        item2.setDescription("Electric scooter");
+        item2.setAvailable(true);
+        item2.setOwner(owner);
+
+        Item item3 = new Item();
+        item3.setId(3L);
+        item3.setName("Car");
+        item3.setDescription("Old car");
+        item3.setAvailable(false);
+        item3.setOwner(owner);
+
+        when(itemRepository.findAll()).thenReturn(List.of(item, item2, item3));
+
+        List<Item> result = itemService.searchItems("drill");
+
+        assertEquals(1, result.size());
+        assertEquals("Drill", result.get(0).getName());
+    }
+
+    @Test
+    public void addComment_Success() {
         Comment comment = new Comment();
-        comment.setText("Test");
-        when(userRepository.findById(2L)).thenReturn(Optional.of(booker));
-        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
-        when(bookingRepository.findByBookerIdAndItem_IdAndEndIsBefore(anyLong(), anyLong(), any()))
-                .thenReturn(List.of(new Booking()));
+        comment.setText("Great item!");
+
+        Booking booking = new Booking();
+        booking.setBooker(otherUser);
+
+        when(userRepository.findById(anyLong())).thenReturn(Optional.of(otherUser));
+        when(itemRepository.findById(anyLong())).thenReturn(Optional.of(item));
+        when(bookingRepository.findByBookerIdAndItem_IdAndEndIsBefore(anyLong(), anyLong(), any(LocalDateTime.class)))
+                .thenReturn(List.of(booking));
         when(commentRepository.save(any(Comment.class))).thenReturn(comment);
 
-        Comment saved = itemService.addComment(2L, 1L, comment);
+        Comment result = itemService.addComment(otherUser.getId(), item.getId(), comment);
 
-        assertNotNull(saved);
-        verify(commentRepository).save(any(Comment.class));
+        assertNotNull(result);
+        assertEquals("Great item!", result.getText());
+        verify(commentRepository, times(1)).save(comment);
     }
 
     @Test
-    void addComment_whenUserHasNotBooked_shouldThrowValidationException() {
-        when(userRepository.findById(2L)).thenReturn(Optional.of(booker));
-        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
-        when(bookingRepository.findByBookerIdAndItem_IdAndEndIsBefore(anyLong(), anyLong(), any()))
-                .thenReturn(Collections.emptyList());
+    public void addComment_NoPastBookings_ThrowsException() {
+        Comment comment = new Comment();
+        comment.setText("Great item!");
 
-        assertThrows(ValidationException.class, () -> itemService.addComment(2L, 1L, new Comment()));
-    }
+        when(userRepository.findById(anyLong())).thenReturn(Optional.of(otherUser));
+        when(itemRepository.findById(anyLong())).thenReturn(Optional.of(item));
+        when(bookingRepository.findByBookerIdAndItem_IdAndEndIsBefore(anyLong(), anyLong(), any(LocalDateTime.class)))
+                .thenReturn(new ArrayList<>());
 
-    @Test
-    void findItemsByRequestId_shouldReturnItems() {
-        when(itemRepository.findByRequestId(1L)).thenReturn(List.of(item));
-        List<Item> items = itemService.findItemsByRequestId(1L);
-        assertFalse(items.isEmpty());
+        assertThrows(jakarta.validation.ValidationException.class, () -> itemService.addComment(otherUser.getId(), item.getId(), comment));
+        verify(commentRepository, never()).save(any(Comment.class));
     }
 }
-

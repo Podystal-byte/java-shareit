@@ -17,11 +17,10 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class UserServiceTest {
+public class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
@@ -29,133 +28,176 @@ class UserServiceTest {
     @InjectMocks
     private UserService userService;
 
-    private User user;
+    private User user1;
+    private User user2;
 
     @BeforeEach
-    void setUp() {
-        user = new User();
-        user.setId(1L);
-        user.setName("testUser");
-        user.setEmail("test@user.ru");
+    public void setUp() {
+        user1 = new User();
+        user1.setId(1L);
+        user1.setName("John Doe");
+        user1.setEmail("john.doe@example.com");
+
+        user2 = new User();
+        user2.setId(2L);
+        user2.setName("Jane Smith");
+        user2.setEmail("jane.smith@example.com");
     }
 
     @Test
-    void addUser_whenUserIsValid_thenReturnsSavedUser() throws ValidationException, ConflictException {
+    public void addUser_Success() throws ValidationException, ConflictException {
+        // Given
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
-        when(userRepository.save(any(User.class))).thenReturn(user);
+        when(userRepository.save(any(User.class))).thenReturn(user1);
 
-        User savedUser = userService.addUser(user);
+        // When
+        User savedUser = userService.addUser(user1);
 
+        // Then
         assertNotNull(savedUser);
-        assertEquals(user.getName(), savedUser.getName());
-        verify(userRepository, times(1)).save(user);
+        assertEquals(user1.getName(), savedUser.getName());
+        verify(userRepository, times(1)).existsByEmail(user1.getEmail());
+        verify(userRepository, times(1)).save(user1);
     }
 
     @Test
-    void addUser_whenEmailIsBlank_thenThrowsValidationException() {
-        user.setEmail("");
-        assertThrows(ValidationException.class, () -> userService.addUser(user));
+    public void addUser_EmailIsBlank_ThrowsValidationException() {
+        // Given
+        user1.setEmail(" ");
+
+        // When & Then
+        assertThrows(ValidationException.class, () -> userService.addUser(user1));
+        verify(userRepository, never()).existsByEmail(anyString());
         verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
-    void addUser_whenEmailAlreadyExists_thenThrowsConflictException() {
+    public void addUser_EmailAlreadyExists_ThrowsConflictException() {
+        // Given
         when(userRepository.existsByEmail(anyString())).thenReturn(true);
-        assertThrows(ConflictException.class, () -> userService.addUser(user));
+
+        // When & Then
+        assertThrows(ConflictException.class, () -> userService.addUser(user1));
+        verify(userRepository, times(1)).existsByEmail(user1.getEmail());
         verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
-    void updateUser_whenUserExists_thenReturnsUpdatedUser() throws ConflictException {
+    public void updateUser_UpdateNameAndEmail_Success() throws ConflictException {
+        // Given
         User updatedUser = new User();
         updatedUser.setId(1L);
-        updatedUser.setName("updatedUser");
-        updatedUser.setEmail("updated@user.ru");
+        updatedUser.setName("John Updated");
+        updatedUser.setEmail("john.updated@example.com");
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.findById(anyLong())).thenReturn(Optional.of(user1));
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
         when(userRepository.save(any(User.class))).thenReturn(updatedUser);
 
+        // When
         User result = userService.updateUser(updatedUser);
 
+        // Then
         assertNotNull(result);
-        assertEquals(updatedUser.getName(), result.getName());
-        assertEquals(updatedUser.getEmail(), result.getEmail());
+        assertEquals("John Updated", result.getName());
+        assertEquals("john.updated@example.com", result.getEmail());
+        verify(userRepository, times(1)).findById(user1.getId());
+        verify(userRepository, times(1)).existsByEmail(updatedUser.getEmail());
         verify(userRepository, times(1)).save(any(User.class));
     }
 
     @Test
-    void updateUser_whenUserNotFound_thenThrowsNotFoundException() {
+    public void updateUser_UserNotFound_ThrowsException() {
+        // Given
+        User updatedUser = new User();
+        updatedUser.setId(99L);
         when(userRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> userService.updateUser(user));
+        // When & Then
+        assertThrows(NotFoundException.class, () -> userService.updateUser(updatedUser));
+        verify(userRepository, times(1)).findById(updatedUser.getId());
         verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
-    void updateUser_whenEmailConflict_thenThrowsConflictException() {
-        User existingUser = new User();
-        existingUser.setId(2L);
-        existingUser.setEmail("existing@user.ru");
-
+    public void updateUser_EmailAlreadyExists_ThrowsConflictException() {
+        // Given
         User updatedUser = new User();
         updatedUser.setId(1L);
-        updatedUser.setEmail("existing@user.ru");
+        updatedUser.setEmail("jane.smith@example.com");
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(userRepository.existsByEmail("existing@user.ru")).thenReturn(true);
+        when(userRepository.findById(anyLong())).thenReturn(Optional.of(user1));
+        when(userRepository.existsByEmail(anyString())).thenReturn(true);
 
+        // When & Then
         assertThrows(ConflictException.class, () -> userService.updateUser(updatedUser));
+        verify(userRepository, times(1)).findById(updatedUser.getId());
+        verify(userRepository, times(1)).existsByEmail(updatedUser.getEmail());
         verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
-    void deleteUser_whenUserExists_thenDeletesUser() {
-        when(userRepository.existsById(1L)).thenReturn(true);
-        userService.deleteUser(1L);
-        verify(userRepository, times(1)).deleteById(1L);
+    public void deleteUser_Success() {
+        // Given
+        when(userRepository.existsById(anyLong())).thenReturn(true);
+        doNothing().when(userRepository).deleteById(anyLong());
+
+        // When
+        userService.deleteUser(user1.getId());
+
+        // Then
+        verify(userRepository, times(1)).existsById(user1.getId());
+        verify(userRepository, times(1)).deleteById(user1.getId());
     }
 
     @Test
-    void deleteUser_whenUserNotFound_thenThrowsNotFoundException() {
-        when(userRepository.existsById(99L)).thenReturn(false);
-        assertThrows(NotFoundException.class, () -> userService.deleteUser(99L));
+    public void deleteUser_UserNotFound_ThrowsException() {
+        // Given
+        when(userRepository.existsById(anyLong())).thenReturn(false);
+
+        // When & Then
+        assertThrows(NotFoundException.class, () -> userService.deleteUser(user1.getId()));
+        verify(userRepository, times(1)).existsById(user1.getId());
         verify(userRepository, never()).deleteById(anyLong());
     }
 
     @Test
-    void getUserById_whenUserExists_thenReturnsUser() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        User foundUser = userService.getUserById(1L);
+    public void getUserById_Success() {
+        // Given
+        when(userRepository.findById(anyLong())).thenReturn(Optional.of(user1));
+
+        // When
+        User foundUser = userService.getUserById(user1.getId());
+
+        // Then
         assertNotNull(foundUser);
-        assertEquals(user.getId(), foundUser.getId());
-        verify(userRepository, times(1)).findById(1L);
+        assertEquals(user1.getId(), foundUser.getId());
+        verify(userRepository, times(1)).findById(user1.getId());
     }
 
     @Test
-    void getUserById_whenUserNotFound_thenThrowsNotFoundException() {
-        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+    public void getUserById_UserNotFound_ThrowsException() {
+        // Given
+        when(userRepository.findById(anyLong())).thenReturn(Optional.empty());
+
+        // When & Then
         assertThrows(NotFoundException.class, () -> userService.getUserById(99L));
+        verify(userRepository, times(1)).findById(99L);
     }
 
     @Test
-    void getAllUsers_whenCalled_thenReturnsAllUsers() {
-        List<User> users = List.of(user, new User());
+    public void getAllUsers_Success() {
+        // Given
+        List<User> users = List.of(user1, user2);
         when(userRepository.findAll()).thenReturn(users);
+
+        // When
         List<User> foundUsers = userService.getAllUsers();
+
+        // Then
         assertNotNull(foundUsers);
         assertEquals(2, foundUsers.size());
+        assertEquals(user1.getName(), foundUsers.get(0).getName());
         verify(userRepository, times(1)).findAll();
-    }
-
-    @Test
-    void shouldThrowConflictExceptionWhenEmailAlreadyExists() {
-        User userToAdd = new User();
-        userToAdd.setEmail("test@test.com");
-        userToAdd.setId(1L);
-
-        when(userRepository.existsByEmail("test@test.com")).thenReturn(true);
-
-        assertThrows(ConflictException.class, () -> userService.addUser(userToAdd));
     }
 }
