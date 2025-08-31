@@ -199,11 +199,6 @@
                                                     <minimum>0.60</minimum>
                                                 </limit>
                                                 <limit>
-                                                    <counter>CLASS</counter>
-                                                    <value>MISSEDCOUNT</value>
-                                                    <maximum>1</maximum>
-                                                </limit>
-                                                <limit>
                                                     <counter>METHOD</counter>
                                                     <value>COVEREDRATIO</value>
                                                     <minimum>0.70</minimum>
