@@ -4,6 +4,7 @@
   "threads": 12,
   "output-type": "json",
   "securityRelatedIssues": false,
+  "annotation-file": [],
   "incremental": false,
   "force-rebuild": false,
   "disable-cache": false,
@@ -39,5 +40,6 @@
   "check-license": false,
   "logging": "OFF",
   "project": "C:/Users/user/IdeaProjects/sprint10/java-shareit",
-  "type": "sources"
+  "type": "sources",
+  "disableDiag": false
 }
