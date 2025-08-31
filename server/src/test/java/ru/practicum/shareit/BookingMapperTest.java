@@ -1,11 +1,10 @@
 package ru.practicum.shareit;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.stereotype.Component;
 import ru.practicum.shareit.booking.Status;
 import ru.practicum.shareit.booking.dto.BookingDto;
-import ru.practicum.shareit.booking.dto.BookingMapper;
 import ru.practicum.shareit.booking.dto.BookingMapperImpl;
 import ru.practicum.shareit.booking.model.Booking;
 import ru.practicum.shareit.item.dto.ItemDto;
@@ -17,74 +16,100 @@ import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest(classes = {BookingMapperImpl.class})
-class BookingMapperTest {
+public class BookingMapperTest {
 
-    @Autowired
-    private BookingMapper bookingMapper;
+    private BookingMapperImpl bookingMapper;
+
+    @BeforeEach
+    public void setUp() {
+        bookingMapper = new BookingMapperImpl();
+    }
 
     @Test
-    void toBookingDto() {
+    public void toBookingDto_whenValidBooking_thenCorrectlyMapped() {
+        // Given
+        User booker = new User();
+        booker.setId(1L);
+        booker.setName("test user");
+        booker.setEmail("test@test.com");
+
         Item item = new Item();
         item.setId(1L);
-        item.setName("Test Item");
-
-        User booker = new User();
-        booker.setId(2L);
+        item.setName("test item");
+        item.setDescription("test description");
+        item.setAvailable(true);
 
         Booking booking = new Booking();
         booking.setId(1L);
-        booking.setStart(LocalDateTime.now());
+        booking.setStart(LocalDateTime.now().minusHours(1));
         booking.setEnd(LocalDateTime.now().plusHours(1));
-        booking.setItem(item);
-        booking.setBooker(booker);
         booking.setStatus(Status.APPROVED);
+        booking.setBooker(booker);
+        booking.setItem(item);
 
+        // When
         BookingDto bookingDto = bookingMapper.toBookingDto(booking);
 
+        // Then
         assertNotNull(bookingDto);
         assertEquals(booking.getId().intValue(), bookingDto.getId());
         assertEquals(booking.getStart(), bookingDto.getStart());
         assertEquals(booking.getEnd(), bookingDto.getEnd());
         assertEquals(booking.getStatus(), bookingDto.getStatus());
-        assertNotNull(bookingDto.getItem());
-        assertNotNull(bookingDto.getBooker());
+        assertEquals(booker.getId(), bookingDto.getBooker().getId());
+        assertEquals(item.getId(), bookingDto.getItem().getId());
     }
 
     @Test
-    void toBookingDto_whenBookingIsNull_shouldReturnNull() {
-        assertNull(bookingMapper.toBookingDto(null));
+    public void toBookingDto_whenNullBooking_thenReturnsNull() {
+        // When
+        BookingDto bookingDto = bookingMapper.toBookingDto(null);
+
+        // Then
+        assertNull(bookingDto);
     }
 
     @Test
-    void toBooking() {
+    public void toBooking_whenValidBookingDto_thenCorrectlyMapped() {
+        // Given
+        UserDto bookerDto = new UserDto();
+        bookerDto.setId(1L);
+        bookerDto.setName("test user");
+        bookerDto.setEmail("test@test.com");
+
         ItemDto itemDto = new ItemDto();
         itemDto.setId(1L);
-
-        UserDto userDto = new UserDto();
-        userDto.setId(2L);
+        itemDto.setName("test item");
+        itemDto.setDescription("test description");
+        itemDto.setAvailable(true);
 
         BookingDto bookingDto = new BookingDto();
         bookingDto.setId(1);
-        bookingDto.setStart(LocalDateTime.now());
+        bookingDto.setStart(LocalDateTime.now().minusHours(1));
         bookingDto.setEnd(LocalDateTime.now().plusHours(1));
+        bookingDto.setStatus(Status.APPROVED);
+        bookingDto.setBooker(bookerDto);
         bookingDto.setItem(itemDto);
-        bookingDto.setBooker(userDto);
-        bookingDto.setStatus(Status.WAITING);
 
+        // When
         Booking booking = bookingMapper.toBooking(bookingDto);
 
+        // Then
         assertNotNull(booking);
-        assertEquals(bookingDto.getId(), booking.getId().intValue());
+        assertEquals((long) bookingDto.getId(), booking.getId());
         assertEquals(bookingDto.getStart(), booking.getStart());
         assertEquals(bookingDto.getEnd(), booking.getEnd());
         assertEquals(bookingDto.getStatus(), booking.getStatus());
-        assertNotNull(booking.getItem());
-        assertNotNull(booking.getBooker());
+        assertEquals(bookerDto.getId(), booking.getBooker().getId());
+        assertEquals(itemDto.getId(), booking.getItem().getId());
     }
 
     @Test
-    void toBooking_whenDtoIsNull_shouldReturnNull() {
-        assertNull(bookingMapper.toBooking(null));
+    public void toBooking_whenNullBookingDto_thenReturnsNull() {
+        // When
+        Booking booking = bookingMapper.toBooking(null);
+
+        // Then
+        assertNull(booking);
     }
 }
