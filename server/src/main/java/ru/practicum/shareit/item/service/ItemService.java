@@ -57,7 +57,7 @@ public class ItemService {
         item.setDescription(itemDto.getDescription());
         item.setAvailable(itemDto.getAvailable());
         item.setOwner(owner);
-        item.setRequest(itemRequest); // ЭТОГО ДОСТАТОЧНО
+        item.setRequest(itemRequest);
 
         Item savedItem = itemRepository.save(item);
 

@@ -23,7 +23,6 @@ class CommentMapperTest {
 
     @Test
     void toCommentDto() {
-        // Given
         User author = new User();
         author.setName("Test Author");
 
@@ -33,10 +32,8 @@ class CommentMapperTest {
         comment.setAuthor(author);
         comment.setCreated(LocalDateTime.now());
 
-        // When
         CommentDto commentDto = commentMapper.toCommentDto(comment);
 
-        // Then
         assertNotNull(commentDto);
         assertEquals(comment.getId(), commentDto.getId());
         assertEquals(comment.getText(), commentDto.getText());
@@ -51,7 +48,6 @@ class CommentMapperTest {
 
     @Test
     void toComment() {
-        // Given
         CommentRequestDto requestDto = new CommentRequestDto();
         requestDto.setText("New comment text");
 
@@ -61,15 +57,13 @@ class CommentMapperTest {
         Item item = new Item();
         item.setId(1L);
 
-        // When
         Comment comment = commentMapper.toComment(requestDto, author, item);
 
-        // Then
         assertNotNull(comment);
-        assertNull(comment.getId()); // ID should be ignored
+        assertNull(comment.getId());
         assertEquals(requestDto.getText(), comment.getText());
         assertEquals(author, comment.getAuthor());
         assertEquals(item, comment.getItem());
-        assertNull(comment.getCreated()); // Created is set by the service
+        assertNull(comment.getCreated());
     }
 }

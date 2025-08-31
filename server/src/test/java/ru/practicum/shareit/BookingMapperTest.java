@@ -17,7 +17,6 @@ import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-// We need to provide all dependent mappers for the context
 @SpringBootTest(classes = {BookingMapperImpl.class})
 class BookingMapperTest {
 
@@ -26,7 +25,6 @@ class BookingMapperTest {
 
     @Test
     void toBookingDto() {
-        // Given
         Item item = new Item();
         item.setId(1L);
         item.setName("Test Item");
@@ -42,16 +40,13 @@ class BookingMapperTest {
         booking.setBooker(booker);
         booking.setStatus(Status.APPROVED);
 
-        // When
         BookingDto bookingDto = bookingMapper.toBookingDto(booking);
 
-        // Then
         assertNotNull(bookingDto);
         assertEquals(booking.getId().intValue(), bookingDto.getId());
         assertEquals(booking.getStart(), bookingDto.getStart());
         assertEquals(booking.getEnd(), bookingDto.getEnd());
         assertEquals(booking.getStatus(), bookingDto.getStatus());
-        // Note: ItemMapper and UserMapper are not in the context, so nested DTOs will have null fields
         assertNotNull(bookingDto.getItem());
         assertNotNull(bookingDto.getBooker());
     }
@@ -63,7 +58,6 @@ class BookingMapperTest {
 
     @Test
     void toBooking() {
-        // Given
         ItemDto itemDto = new ItemDto();
         itemDto.setId(1L);
 
@@ -78,16 +72,13 @@ class BookingMapperTest {
         bookingDto.setBooker(userDto);
         bookingDto.setStatus(Status.WAITING);
 
-        // When
         Booking booking = bookingMapper.toBooking(bookingDto);
 
-        // Then
         assertNotNull(booking);
         assertEquals(bookingDto.getId(), booking.getId().intValue());
         assertEquals(bookingDto.getStart(), booking.getStart());
         assertEquals(bookingDto.getEnd(), booking.getEnd());
         assertEquals(bookingDto.getStatus(), booking.getStatus());
-        // Note: ItemMapper and UserMapper are not in the context, so nested entities will have null fields
         assertNotNull(booking.getItem());
         assertNotNull(booking.getBooker());
     }

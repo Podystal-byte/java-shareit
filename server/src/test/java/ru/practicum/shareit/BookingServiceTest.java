@@ -81,7 +81,6 @@ class BookingServiceTest {
         booking.setEnd(bookingRequestDto.getEnd());
     }
 
-    // --- createBooking Tests ---
 
     @Test
     void createBooking_whenValid_shouldReturnBooking() throws ValidationException {
@@ -138,7 +137,6 @@ class BookingServiceTest {
         assertThrows(ValidationException.class, () -> bookingService.createBooking(booker.getId(), bookingRequestDto));
     }
 
-    // --- approveBooking Tests ---
 
     @Test
     void approveBooking_whenApproved_shouldSetStatusToApproved() throws ValidationException {
@@ -179,7 +177,6 @@ class BookingServiceTest {
         assertThrows(ValidationException.class, () -> bookingService.approveBooking(owner.getId(), booking.getId(), true));
     }
 
-    // --- getBookingById Tests ---
 
     @Test
     void getBookingById_whenOwnerOrBooker_shouldReturnBooking() {
@@ -201,7 +198,6 @@ class BookingServiceTest {
         assertThrows(NotFoundException.class, () -> bookingService.getBookingById(owner.getId(), 99L));
     }
 
-    // --- getBookingsByUser Tests ---
 
     @Test
     void getBookingsByUser_whenUserNotFound_shouldThrowNotFoundException() {
@@ -251,7 +247,6 @@ class BookingServiceTest {
         testGetBookingsByUserWithState("REJECTED", () -> verify(bookingRepository).findByBookerIdAndStatus(eq(booker.getId()), eq(Status.REJECTED), any(Sort.class)));
     }
 
-    // --- getBookingsByOwner Tests ---
 
     @Test
     void getBookingsByOwner_whenUserNotFound_shouldThrowNotFoundException() {

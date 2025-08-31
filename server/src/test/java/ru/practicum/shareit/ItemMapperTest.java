@@ -57,7 +57,6 @@ class ItemMapperTest {
 
     @Test
     void toItemWithBookingsAndCommentsDto() {
-        // Given
         User owner = new User();
         owner.setId(1L);
 
@@ -83,10 +82,8 @@ class ItemMapperTest {
         comment.setCreated(LocalDateTime.now());
         List<Comment> comments = Collections.singletonList(comment);
 
-        // When
         ItemWithBookingsAndCommentsDto dto = itemMapper.toItemWithBookingsAndCommentsDto(item, lastBooking, nextBooking, comments);
 
-        // Then
         assertNotNull(dto);
         assertEquals(item.getId(), dto.getId());
         assertEquals(item.getName(), dto.getName());
@@ -102,7 +99,6 @@ class ItemMapperTest {
 
         assertNotNull(dto.getComments());
         assertFalse(dto.getComments().isEmpty());
-        // Note: CommentMapper is not part of this test context, so fields inside CommentDto will be null
     }
 
     @Test
